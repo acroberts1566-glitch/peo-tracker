@@ -214,7 +214,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const DOC_REF = doc(db, 'peo', 'opps_v3');
 
-const TEAM=['Austin Roberts','Will Franco','Chad Starkey','Ryan Coukoulis','Luke Motsinger','Tanner Pollock','Kaity Vela','Other'];
+const TEAM=['Austin Roberts','Austin Roberts (AI)','Will Franco','Chad Starkey','Ryan Coukoulis','Luke Motsinger','Tanner Pollock','Kaity Vela','Ahmed Elghazali','Other'];
 const STAGES=['intake','submission','underwriting','decision'];
 const SLABELS={intake:'Intake',submission:'Submission',underwriting:'Underwriting',decision:'Decision'};
 const WITH_OPTS=['Sales team','Channel partner','Underwriting'];
@@ -370,11 +370,9 @@ function setNavTab(id){
 
 function renderList(){
   renderNav();
-  const list=sortList(getTabOpps(activeNavTab));
+  const search=document.getElementById('search')?document.getElementById('search').value.toLowerCase():'';
+  const partner=document.getElementById('filter-partner')?document.getElementById('filter-partner').value:'';
   const content=document.getElementById('tab-content');if(!content)return;
-
-  const tabDef=NAV_TABS.find(t=>t.id===activeNavTab);
-  const title=tabDef?tabDef.label:'';
 
   const sortDropdown=`<select onchange="setSort(this.value)" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:5px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer">
     <option value="recent"${currentSort==='recent'?' selected':''}>Recently updated</option>
@@ -385,6 +383,31 @@ function renderList(){
     <option value="ee-asc"${currentSort==='ee-asc'?' selected':''}>Fewest EEs</option>
   </select>`;
 
+  // If search is active, show cross-tab results
+  if(search||partner){
+    let list=[...opps];
+    if(search)list=list.filter(o=>(o.name||'').toLowerCase().includes(search)||(o.partner||'').toLowerCase().includes(search));
+    if(partner)list=list.filter(o=>o.partner===partner);
+    list=sortList(list);
+    const title=search?`Search: "${document.getElementById('search').value}"`:'All records';
+    if(!list.length){
+      content.innerHTML=`
+        <div class="tab-header"><h2>${title}</h2><div style="display:flex;align-items:center;gap:10px"><span>0 records</span>${sortDropdown}</div></div>
+        <div class="empty-state">No opportunities match your search.</div>`;
+      return;
+    }
+    const cards=list.map(o=>cardHTML(o)).join('');
+    content.innerHTML=`
+      <div class="tab-header"><h2>${title}</h2><div style="display:flex;align-items:center;gap:10px"><span>${list.length} record${list.length!==1?'s':''}</span>${sortDropdown}</div></div>
+      ${cards}`;
+    return;
+  }
+
+  // Normal tab view
+  const list=sortList(getTabOpps(activeNavTab));
+  const tabDef=NAV_TABS.find(t=>t.id===activeNavTab);
+  const title=tabDef?tabDef.label:'';
+
   if(!list.length){
     content.innerHTML=`
       <div class="tab-header"><h2>${title}</h2><div style="display:flex;align-items:center;gap:10px"><span>0 records</span>${sortDropdown}</div></div>
@@ -392,39 +415,44 @@ function renderList(){
     return;
   }
 
-  const cards=list.map(o=>{
-    const s=getStage(o);
-    const rts=o.trackRisk?trackStatus(o,'risk'):null;
-    const bts=o.trackBenefits?trackStatus(o,'benefits'):null;
-    const team=(o.team||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('');
-    const last=(o.auditLog&&o.auditLog.length)?o.auditLog[o.auditLog.length-1]:null;
-    const updLine=last
-      ?`<div class="card-updated">Updated by <strong>${esc(last.who)}</strong> &nbsp;&middot;&nbsp; ${new Date(last.ts).toLocaleDateString()} ${new Date(last.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`
-      :`<div class="card-updated">No edits recorded yet</div>`;
-    const reason=attentionReason(o);
-    const cardClass=reason?'attn-card':'opp-card';
-    const reasonLine=reason?`<div class="attn-reason">⚠ ${esc(reason)}</div>`:'';
-    return`<div class="${cardClass}" onclick="openEdit('${o.id}')">
-      <div class="card-top">
-        <div>
-          <div class="card-name">${esc(o.name)||'Unnamed group'}</div>
-          <div class="card-meta">${esc(o.partner)||'—'} &nbsp;&middot;&nbsp; ${o.ee||'?'} EEs</div>
-          ${updLine}
-          ${reasonLine}
-        </div>
-        <span class="badge ${STAGE_CLS[s]||'b-stage'}">${STAGE_MAP[s]||s}</span>
-      </div>
-      <div class="card-tracks">
-        ${o.trackRisk?`<div class="track-col"><span class="track-lbl">Risk</span>${rts?`<span class="badge ${tsClass(rts)}">${tsLabel(rts)}</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`:''}
-        ${o.trackBenefits?`<div class="track-col"><span class="track-lbl">Benefits</span>${bts?`<span class="badge ${tsClass(bts)}">${tsLabel(bts)}</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`:''}
-      </div>
-      ${team?`<div class="card-team">${team}</div>`:''}
-    </div>`;
-  }).join('');
-
+  const cards=list.map(o=>cardHTML(o)).join('');
   content.innerHTML=`
     <div class="tab-header"><h2>${title}</h2><div style="display:flex;align-items:center;gap:10px"><span>${list.length} record${list.length!==1?'s':''}</span>${sortDropdown}</div></div>
     ${cards}`;
+}
+
+function cardHTML(o){
+  const s=getStage(o);
+  const rts=o.trackRisk?trackStatus(o,'risk'):null;
+  const bts=o.trackBenefits?trackStatus(o,'benefits'):null;
+  const cpContact=(o.intake||{}).cpContact;
+  const metaLine=cpContact
+    ?`${esc(o.partner)||'—'} &nbsp;&middot;&nbsp; ${esc(cpContact)} &nbsp;&middot;&nbsp; ${o.ee||'?'} EEs`
+    :`${esc(o.partner)||'—'} &nbsp;&middot;&nbsp; ${o.ee||'?'} EEs`;
+  const team=(o.team||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('');
+  const last=(o.auditLog&&o.auditLog.length)?o.auditLog[o.auditLog.length-1]:null;
+  const updLine=last
+    ?`<div class="card-updated">Updated by <strong>${esc(last.who)}</strong> &nbsp;&middot;&nbsp; ${new Date(last.ts).toLocaleDateString()} ${new Date(last.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`
+    :`<div class="card-updated">No edits recorded yet</div>`;
+  const reason=attentionReason(o);
+  const cardClass=reason?'attn-card':'opp-card';
+  const reasonLine=reason?`<div class="attn-reason">⚠ ${esc(reason)}</div>`:'';
+  return`<div class="${cardClass}" onclick="openEdit('${o.id}')">
+    <div class="card-top">
+      <div>
+        <div class="card-name">${esc(o.name)||'Unnamed group'}</div>
+        <div class="card-meta">${metaLine}</div>
+        ${updLine}
+        ${reasonLine}
+      </div>
+      <span class="badge ${STAGE_CLS[s]||'b-stage'}">${STAGE_MAP[s]||s}</span>
+    </div>
+    <div class="card-tracks">
+      ${o.trackRisk?`<div class="track-col"><span class="track-lbl">Risk</span>${rts?`<span class="badge ${tsClass(rts)}">${tsLabel(rts)}</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`:''}
+      ${o.trackBenefits?`<div class="track-col"><span class="track-lbl">Benefits</span>${bts?`<span class="badge ${tsClass(bts)}">${tsLabel(bts)}</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`:''}
+    </div>
+    ${team?`<div class="card-team">${team}</div>`:''}
+  </div>`;
 }
 
 function blankDraft(){
@@ -464,7 +492,7 @@ function buildModal(){
       <span>Editing as</span>
       <select id="who-select" onchange="setCurrentUser(this.value)">
         <option value="">— select your name —</option>
-        ${TEAM.filter(t=>t!=='Other').map(t=>`<option value="${t}"${currentUser===t?' selected':''}>${t}</option>`).join('')}
+        ${TEAM.filter(t=>t!=='Other'&&t!=='Austin Roberts (AI)').map(t=>`<option value="${t}"${currentUser===t?' selected':''}>${t}</option>`).join('')}
       </select>
     </div>
     <div class="tab-bar">
@@ -541,6 +569,7 @@ function bindStage(){
     bi('f-risk-docs',v=>{draft.intake.riskDocs=v;});
     bi('f-ben-docs',v=>{draft.intake.benefitsDocs=v;});
     bi('f-intake-notes',v=>{draft.intake.notes=v;});
+    bi('f-cp-contact',v=>{draft.intake.cpContact=v;});
     TEAM.forEach(t=>{bc('tm-'+tkey(t),v=>{if(v&&!draft.team.includes(t))draft.team.push(t);else draft.team=draft.team.filter(x=>x!==t);});});
   }
   if(currentStage===1){
@@ -559,7 +588,12 @@ function bindStage(){
   }
   if(currentStage===3){
     bi('f-fwd-date',v=>{draft.decision.forwardDate=v;});
-    bs('f-decided-by',v=>{draft.decision.decidedBy=v;});
+    bs('f-decided-by',v=>{
+      draft.decision.decidedBy=v;
+      const cpBox=document.getElementById('decided-by-cp-wrap');
+      if(cpBox)cpBox.style.display=(v==='cp_contact')?'block':'none';
+    });
+    bi('f-decided-by-cp',v=>{draft.decision.decidedByCp=v;});
     bi('f-dec-risk-notes',v=>{draft.decision.riskNotes=v;});
     bi('f-dec-ben-notes',v=>{draft.decision.benefitsNotes=v;});
     bi('f-dec-notes',v=>{draft.decision.notes=v;});
@@ -601,7 +635,10 @@ function intakeHTML(){
       <div class="field"><label>Group name *</label><input id="f-name" value="${esc(draft.name)}" placeholder="Company name"></div>
       <div class="field"><label>Channel partner *</label><input id="f-partner" value="${esc(draft.partner)}" placeholder="Agency, broker, CPA..."></div>
     </div>
-    <div class="field" style="max-width:180px"><label>Employee count</label><input id="f-ee" type="number" value="${esc(draft.ee)}" placeholder="#"></div>
+    <div class="row2">
+      <div class="field" style="max-width:180px"><label>Employee count</label><input id="f-ee" type="number" value="${esc(draft.ee)}" placeholder="#"></div>
+      <div class="field"><label>CP contact / sub-agent</label><input id="f-cp-contact" value="${esc(d.cpContact)}" placeholder="Name of individual who sent the deal"></div>
+    </div>
     <div class="field"><label>Submission type</label>
       <div style="display:flex;gap:20px;margin-top:6px">
         <label class="cb-row"><input type="checkbox" id="f-risk"${draft.trackRisk?' checked':''}> Risk (WC / PEO)</label>
@@ -662,13 +699,24 @@ function uwHTML(){
 
 function decisionHTML(){
   const d=draft.decision||{};
+  const cpContact=(draft.intake||{}).cpContact||'';
+  const isCp=d.decidedBy==='cp_contact';
+  const decidedByOpts=`<option value="">—</option>`+
+    TEAM.filter(t=>t!=='Other'&&t!=='Austin Roberts (AI)').map(t=>`<option value="${t}"${d.decidedBy===t?' selected':''}>${t}</option>`).join('')+
+    `<option value="cp_contact"${isCp?' selected':''}>Channel partner contact${cpContact?' ('+cpContact+')':''}</option>`;
   return`<div class="sec">Currently with</div>
     <div class="pill-group" style="margin-bottom:4px">${withPillsHTML(d,'decision')}</div>
     <div class="sec">Moving forward?</div>
     <div class="field"><div class="pill-group">${fwdPillsHTML()}</div></div>
     <div class="row2">
       <div class="field"><label>Decision date</label><input id="f-fwd-date" type="date" value="${esc(d.forwardDate)}"></div>
-      <div class="field"><label>Decision communicated by</label><select id="f-decided-by">${teamOpts(d.decidedBy)}</select></div>
+      <div class="field">
+        <label>Decision communicated by</label>
+        <select id="f-decided-by">${decidedByOpts}</select>
+        <div id="decided-by-cp-wrap" style="margin-top:6px;display:${isCp?'block':'none'}">
+          <input id="f-decided-by-cp" value="${esc(d.decidedByCp||cpContact)}" placeholder="CP contact name" style="width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text)">
+        </div>
+      </div>
     </div>
     ${draft.trackRisk?`<div class="field"><label>Risk — decision notes</label><textarea id="f-dec-risk-notes">${esc(d.riskNotes)}</textarea></div>`:''}
     ${draft.trackBenefits?`<div class="field"><label>Benefits — decision notes</label><textarea id="f-dec-ben-notes">${esc(d.benefitsNotes)}</textarea></div>`:''}
@@ -859,32 +907,60 @@ function generateSFNote(){
   const uw=draft.uw||{},sub=draft.sub||{},dec=draft.decision||{};
   const stage=getStage(draft);
   const parts=[];
+
+  // Always include per-track status with notes
   if(draft.trackRisk){
     const ro=uw.riskOutcome;
-    if(ro==='approved')parts.push('Risk Approved'+(uw.riskNotes?', '+uw.riskNotes:''));
-    else if(ro==='denied')parts.push('Risk Denied'+(uw.riskNotes?', '+uw.riskNotes:''));
-    else if(ro==='om')parts.push('Risk — looking open market'+(uw.riskNotes?', '+uw.riskNotes:''));
+    // Use decision-stage risk notes if present, fall back to UW notes
+    const rNotes=dec.riskNotes||uw.riskNotes||'';
+    if(ro==='approved')parts.push('Risk Approved'+(rNotes?', '+rNotes:''));
+    else if(ro==='denied')parts.push('Risk Denied'+(rNotes?', '+rNotes:''));
+    else if(ro==='om')parts.push('Risk — looking open market'+(rNotes?', '+rNotes:''));
     else if(sub.riskSubmitted)parts.push('Risk submitted to U/W'+(sub.riskSubmittedBy?', submitted by '+sub.riskSubmittedBy:''));
     else if(draft.intake&&draft.intake.riskDocs)parts.push('Risk docs received, pending submission');
     else parts.push('Risk — intake in progress');
   }
   if(draft.trackBenefits){
     const bo=uw.benefitsOutcome;
-    if(bo==='approved')parts.push('Benefits Approved'+(uw.benefitsNotes?', '+uw.benefitsNotes:''));
-    else if(bo==='denied')parts.push('Benefits Denied'+(uw.benefitsNotes?', '+uw.benefitsNotes:''));
-    else if(bo==='om')parts.push('Benefits — looking open market'+(uw.benefitsNotes?', '+uw.benefitsNotes:''));
+    // Use decision-stage benefits notes if present, fall back to UW notes
+    const bNotes=dec.benefitsNotes||uw.benefitsNotes||'';
+    if(bo==='approved')parts.push('Benefits Approved'+(bNotes?', '+bNotes:''));
+    else if(bo==='denied')parts.push('Benefits Denied'+(bNotes?', '+bNotes:''));
+    else if(bo==='om')parts.push('Benefits — looking open market'+(bNotes?', '+bNotes:''));
     else if(sub.benefitsSubmitted)parts.push('Benefits submitted to U/W'+(sub.benefitsSubmittedBy?', submitted by '+sub.benefitsSubmittedBy:''));
     else if(draft.intake&&draft.intake.benefitsDocs)parts.push('Benefits docs received, pending submission');
     else parts.push('Benefits — intake in progress');
   }
-  if(stage==='client')parts.push('Client moving forward');
-  else if(stage==='notforward')parts.push('Group not moving forward'+(dec.notes?', '+dec.notes:''));
-  else if(stage==='deciding')parts.push('Awaiting decision from client');
+
+  // Decision outcome layer — appended after track details
+  if(stage==='client'){
+    parts.push('Client moving forward'+(dec.notes?', '+dec.notes:''));
+  } else if(stage==='notforward'){
+    const decidedBy=dec.decidedBy==='cp_contact'?(dec.decidedByCp||(draft.intake||{}).cpContact||'CP contact'):dec.decidedBy||'';
+    parts.push('Group not moving forward'+(decidedBy?', communicated by '+decidedBy:'')+(dec.notes?', '+dec.notes:''));
+  } else if(stage==='deciding'){
+    parts.push('Awaiting decision from client'+(dec.notes?', '+dec.notes:''));
+  }
+
+  // Currently with
   const withMap={sub:sub.currentWith,uw:uw.currentWith,decision:dec.currentWith};
   const currentWith=withMap.decision||withMap.uw||withMap.sub;
   if(currentWith)parts.push('Currently with: '+currentWith);
+
+  // Follow-up date: 7 days from today, snapped to Monday if weekend — skip for closed lost
+  let followUpLine='';
+  if(stage!=='notforward'){
+    const followUp=new Date(today);
+    followUp.setDate(followUp.getDate()+7);
+    const dow=followUp.getDay();
+    if(dow===0)followUp.setDate(followUp.getDate()+1);
+    if(dow===6)followUp.setDate(followUp.getDate()+2);
+    const followUpStr=(followUp.getMonth()+1)+'/'+followUp.getDate()+'/'+followUp.getFullYear();
+    followUpLine=' Follow up on '+followUpStr+'.';
+  }
+
   const body=parts.join('. ')+(parts.length?'.':'');
-  return`${dateStr} ${initials} - ${body}`;
+  return`${dateStr} ${initials} - ${body}${followUpLine}`;
 }
 
 function sfUpdateHTML(){
