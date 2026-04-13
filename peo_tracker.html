@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEO Opportunity Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --orange:#E3530F; --orange-dark:#b84009; --orange-light:#fde8da; --orange-text:#993C1D;
+  --bg:#f5f4f1; --surface:#ffffff; --surface2:#f0ede8; --border:#e2ddd6; --border2:#ccc7bf;
+  --text:#1a1916; --text2:#6b6760; --text3:#9c9890;
+  --green-bg:#eaf3de; --green-text:#3B6D11; --green-border:#9fc96a;
+  --red-bg:#fcebeb; --red-text:#A32D2D; --red-border:#f09595;
+  --blue-bg:#e6f1fb; --blue-text:#185FA5; --blue-border:#85b7eb;
+  --purple-bg:#EEEDFE; --purple-text:#3C3489; --purple-border:#AFA9EC;
+  --amber-bg:#faeeda; --amber-text:#854F0B; --amber-border:#EF9F27;
+  --radius:8px; --radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:260px;min-width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.main{flex:1;overflow-y:auto}
+.sb-header{padding:18px 16px 12px;border-bottom:1px solid var(--border)}
+.sb-header h1{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.sb-header p{font-size:11px;color:var(--text3);margin-top:2px}
+.sb-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid var(--border)}
+.metric{background:var(--surface2);border-radius:var(--radius);padding:10px}
+.metric-num{font-size:20px;font-weight:500;font-family:'IBM Plex Mono',monospace}
+.metric-lbl{font-size:10px;color:var(--text3);margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
+.sb-section{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.sb-section label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:3px}
+.sb-section input,.sb-section select{width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:6px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text)}
+.sb-section input:focus,.sb-section select:focus{outline:none;border-color:var(--orange)}
+.sb-new{padding:12px 14px 6px}
+.btn-new{width:100%;padding:9px;border-radius:var(--radius);border:none;background:var(--orange);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer}
+.btn-new:hover{background:var(--orange-dark)}
+.sync-line{padding:6px 14px 10px;font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace}
+.main-header{padding:18px 24px 12px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between}
+.main-header h2{font-size:14px;font-weight:500}
+.main-header span{font-size:12px;color:var(--text3)}
+.opp-list{padding:16px 24px;display:flex;flex-direction:column;gap:8px}
+.empty-state{padding:60px 24px;text-align:center;color:var(--text3);font-size:13px}
+.opp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.opp-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.card-name{font-size:14px;font-weight:500}
+.card-meta{font-size:11px;color:var(--text3);margin-top:2px;font-family:'IBM Plex Mono',monospace}
+.card-updated{font-size:10px;color:var(--text3);margin-top:5px;font-family:'IBM Plex Mono',monospace}
+.card-updated strong{color:var(--text2);font-weight:500}
+.card-tracks{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.track-col{display:flex;align-items:center;gap:5px}
+.track-lbl{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.card-team{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.b-stage{background:var(--orange-light);color:var(--orange-text)}
+.b-docs{background:var(--amber-bg);color:var(--amber-text)}
+.b-submitted{background:var(--blue-bg);color:var(--blue-text)}
+.b-approved{background:var(--green-bg);color:var(--green-text)}
+.b-denied{background:var(--red-bg);color:var(--red-text)}
+.b-om{background:var(--purple-bg);color:var(--purple-text)}
+.b-client{background:var(--orange);color:#fff}
+.b-notforward{background:var(--red-bg);color:var(--red-text)}
+.b-deciding{background:var(--amber-bg);color:var(--amber-text)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem 4rem;z-index:200;overflow-y:auto}
+.modal{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);width:100%;max-width:680px;padding:24px}
+.modal-title{font-size:17px;font-weight:500;margin-bottom:16px}
+.who-banner{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.who-banner span{font-size:12px;color:var(--text2)}
+.who-banner select{font-family:'IBM Plex Sans',sans-serif;font-size:12px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+.who-banner select:focus{outline:none;border-color:var(--orange)}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tabbt{padding:8px 16px;font-size:12px;cursor:pointer;border:none;border-bottom:2px solid transparent;color:var(--text2);background:none;font-family:'IBM Plex Sans',sans-serif;margin-bottom:-1px}
+.tabbt.active{color:var(--orange);border-bottom-color:var(--orange)}
+.stage-nav{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:18px}
+.sn-btn{flex:1;padding:8px 4px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;border:none;border-right:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;text-align:center;line-height:1.3}
+.sn-btn:last-child{border-right:none}
+.sn-btn.active{background:var(--orange);color:#fff}
+.sn-btn.done{background:var(--green-bg);color:var(--green-text)}
+.sec{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sec:first-child{margin-top:0}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--orange)}
+.field textarea{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.track-box{border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.track-box-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:12px}
+.pill-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-family:'IBM Plex Sans',sans-serif;font-size:12px;cursor:pointer;background:transparent;color:var(--text)}
+.pill:hover{background:var(--surface2)}
+.pill.sel-approved{background:var(--green-bg);border-color:var(--green-border);color:var(--green-text)}
+.pill.sel-denied{background:var(--red-bg);border-color:var(--red-border);color:var(--red-text)}
+.pill.sel-om{background:var(--purple-bg);border-color:var(--purple-border);color:var(--purple-text)}
+.pill.sel-client{background:var(--orange);border-color:var(--orange);color:#fff}
+.pill.sel-notforward{background:var(--red-bg);border-color:var(--red-border);color:var(--red-text)}
+.pill.sel-deciding{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber-text)}
+.with-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-family:'IBM Plex Sans',sans-serif;font-size:12px;cursor:pointer;background:transparent;color:var(--text)}
+.with-pill:hover{background:var(--surface2)}
+.with-pill.sel{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue-text)}
+.cb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 12px}
+.cb-row{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:3px 0}
+.cb-row input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--orange)}
+.modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.modal-actions-right{display:flex;gap:8px;align-items:center}
+.btn{font-family:'IBM Plex Sans',sans-serif;font-size:13px;padding:7px 16px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.primary:hover{background:var(--orange-dark)}
+.btn.advance{border-color:var(--orange);color:var(--orange)}
+.btn.advance:hover{background:var(--orange-light)}
+.btn.danger{color:var(--red-text);border-color:var(--red-border)}
+.btn.danger:hover{background:var(--red-bg)}
+.audit-log{display:flex;flex-direction:column}
+.audit-entry{padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:12px}
+.audit-entry:last-child{border-bottom:none}
+.audit-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);margin-top:5px;flex-shrink:0}
+.audit-dot.adv{background:var(--orange)}
+.audit-who{font-size:12px;font-weight:500;color:var(--text)}
+.audit-what{font-size:11px;color:var(--text2);margin-top:1px}
+.audit-when{font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-top:2px}
+.audit-empty{padding:2rem;text-align:center;color:var(--text3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar">
+    <div class="sb-header"><h1>PEO Tracker</h1><p>Vensure Employer Solutions</p></div>
+    <div class="sb-metrics" id="sb-metrics"></div>
+    <div class="sb-section">
+      <div><label>Search</label><input type="text" id="search" placeholder="Group or partner..." oninput="renderList()"></div>
+      <div><label>Partner</label><select id="filter-partner" onchange="renderList()"><option value="">All partners</option></select></div>
+      <div><label>Status</label>
+        <select id="filter-status" onchange="renderList()">
+          <option value="">All</option>
+          <option value="intake">Intake</option>
+          <option value="submission">Submission</option>
+          <option value="underwriting">Underwriting</option>
+          <option value="decision">Decision</option>
+          <option value="client">Client</option>
+          <option value="notforward">Not moving forward</option>
+          <option value="deciding">Still deciding</option>
+        </select>
+      </div>
+      <div><label>Type</label>
+        <select id="filter-type" onchange="renderList()">
+          <option value="">All types</option>
+          <option value="risk">Risk only</option>
+          <option value="benefits">Benefits only</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+    </div>
+    <div class="sb-new"><button class="btn-new" onclick="openNew()">+ New opportunity</button></div>
+    <div style="padding:6px 14px 4px;display:flex;gap:6px">
+      <button class="btn" style="flex:1;font-size:12px" onclick="exportCSV()">Export CSV</button>
+      <button class="btn" style="flex:1;font-size:12px" onclick="document.getElementById('import-input').click()">Import CSV</button>
+      <input type="file" id="import-input" accept=".csv" style="display:none" onchange="importCSV(event)">
+    </div>
+    <div class="sync-line" id="sync-bar">Loading...</div>
+  </div>
+  <div class="main">
+    <div class="main-header"><h2>Open opportunities</h2><span id="count-label"></span></div>
+    <div class="opp-list" id="opp-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="import-overlay" style="display:none">
+  <div class="modal" style="max-width:420px;padding:28px">
+    <div style="font-size:15px;font-weight:500;margin-bottom:12px">Import CSV</div>
+    <div id="import-msg" style="font-size:13px;line-height:1.6;margin-bottom:20px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn danger" id="import-btn-replace" onclick="doImport('replace')">Replace all existing data</button>
+      <button class="btn advance" id="import-btn-merge" onclick="doImport('merge')">Merge (skip duplicates)</button>
+      <button class="btn primary" id="import-btn-ok" onclick="closeImportOverlay()">OK</button>
+      <button class="btn" onclick="closeImportOverlay()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal" style="display:none">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script type="module">
+const TEAM=['Austin Roberts','Will Franco','Chad Starkey','Ryan Coukoulis','Luke Motsinger','Tanner Pollock','Kaity Vela','Other'];
+const STAGES=['intake','submission','underwriting','decision'];
+const SLABELS={intake:'Intake',submission:'Submission',underwriting:'Underwriting',decision:'Decision'};
+const WITH_OPTS=['Sales team','Channel partner','Underwriting'];
+const FINAL_STATUS=['client','notforward','deciding'];
+const STAGE_MAP={intake:'Intake',submission:'Submission',underwriting:'Underwriting',decision:'Decision',client:'Client',notforward:'Not moving forward',deciding:'Still deciding'};
+const STAGE_CLS={intake:'b-stage',submission:'b-stage',underwriting:'b-stage',decision:'b-stage',client:'b-client',notforward:'b-notforward',deciding:'b-deciding'};
+
+// ── Firebase config ──────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAihB_mKGha39l4ZG5BgSbEoBWVWdRtcXU",
+  authDomain: "peo-tracker.firebaseapp.com",
+  projectId: "peo-tracker",
+  storageBucket: "peo-tracker.firebasestorage.app",
+  messagingSenderId: "181943368122",
+  appId: "1:181943368122:web:da0320a14e0d0f9e798583"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const DOC_REF = doc(db, 'peo', 'opps_v3');
+// ─────────────────────────────────────────────────────────────────
+
+let opps=[],editId=null,currentStage=0,draft={},activeTab='form';
+let currentUser=localStorage.getItem('peo_current_user')||'';
+let lastSaveTime=0;
+const SAVE_COOLDOWN=10000; // don't auto-reload within 10s of a save
+
+function setCurrentUser(val){currentUser=val;localStorage.setItem('peo_current_user',val);}
+
+function modalIsOpen(){
+  const m=document.getElementById('modal');
+  const im=document.getElementById('import-overlay');
+  return (m&&m.style.display!=='none')||(im&&im.style.display!=='none');
+}
+
+async function load(force){
+  if(!force && modalIsOpen()) return;
+  if(!force && (Date.now()-lastSaveTime)<SAVE_COOLDOWN) return;
+  try{
+    const snap=await getDoc(DOC_REF);
+    const fetched=snap.exists()?snap.data().opps:[];
+    if(!force && opps.length>0 && fetched.length===0){
+      sync('Synced '+new Date().toLocaleTimeString());
+      return; // safety: never overwrite in-memory data with empty cloud response
+    }
+    opps=fetched;
+  } catch(e){sync('Sync error: '+e.message);return;}
+  sync('Synced '+new Date().toLocaleTimeString());
+  renderSummary();renderList();populatePartners();
+}
+async function save(){
+  lastSaveTime=Date.now();
+  try{
+    await setDoc(DOC_REF,{opps});
+    sync('Saved '+new Date().toLocaleTimeString());
+  } catch(e){sync('Save error: '+e.message);}
+  renderSummary();renderList();populatePartners();
+}
+function sync(t){const el=document.getElementById('sync-bar');if(el)el.textContent=t;}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function tkey(t){return t.replace(/\s/g,'_');}
+
+function getStage(o){if(o.decision&&o.decision.forward)return o.decision.forward;return o.currentStage||'intake';}
+function trackStatus(o,track){
+  const uw=o.uw||{},sub=o.sub||{},intake=o.intake||{};
+  if(uw[track+'Outcome'])return uw[track+'Outcome'];
+  if(sub[track+'Submitted'])return 'submitted';
+  if(intake[track+'Docs'])return 'docs';
+  return null;
+}
+function tsLabel(ts){return{docs:'Docs Rcvd',submitted:'Submitted',approved:'Approved',denied:'Denied',om:'Looking OM'}[ts]||ts;}
+function tsClass(ts){return{docs:'b-docs',submitted:'b-submitted',approved:'b-approved',denied:'b-denied',om:'b-om'}[ts]||'b-stage';}
+
+function renderSummary(){
+  const t=opps.length,active=opps.filter(o=>!FINAL_STATUS.includes(getStage(o))).length;
+  const clients=opps.filter(o=>o.decision&&o.decision.forward==='client').length;
+  const uw=opps.filter(o=>getStage(o)==='underwriting').length;
+  document.getElementById('sb-metrics').innerHTML=`
+    <div class="metric"><div class="metric-num">${t}</div><div class="metric-lbl">Total</div></div>
+    <div class="metric"><div class="metric-num">${active}</div><div class="metric-lbl">Active</div></div>
+    <div class="metric"><div class="metric-num">${uw}</div><div class="metric-lbl">In U/W</div></div>
+    <div class="metric"><div class="metric-num">${clients}</div><div class="metric-lbl">Clients</div></div>`;
+}
+
+function populatePartners(){
+  const sel=document.getElementById('filter-partner'),cur=sel.value;
+  const pts=[...new Set(opps.map(o=>o.partner).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All partners</option>'+pts.map(p=>`<option value="${p}">${p}</option>`).join('');
+  sel.value=cur;
+}
+
+function renderList(){
+  const search=document.getElementById('search').value.toLowerCase();
+  const partner=document.getElementById('filter-partner').value;
+  const status=document.getElementById('filter-status').value;
+  const type=document.getElementById('filter-type').value;
+  let list=[...opps];
+  if(search)list=list.filter(o=>(o.name||'').toLowerCase().includes(search)||(o.partner||'').toLowerCase().includes(search));
+  if(partner)list=list.filter(o=>o.partner===partner);
+  if(status)list=list.filter(o=>getStage(o)===status);
+  if(type==='risk')list=list.filter(o=>o.trackRisk&&!o.trackBenefits);
+  else if(type==='benefits')list=list.filter(o=>!o.trackRisk&&o.trackBenefits);
+  else if(type==='both')list=list.filter(o=>o.trackRisk&&o.trackBenefits);
+  list.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  document.getElementById('count-label').textContent=list.length+' record'+(list.length!==1?'s':'');
+  const el=document.getElementById('opp-list');
+  if(!list.length){el.innerHTML='<div class="empty-state">No opportunities match your filters.</div>';return;}
+  el.innerHTML=list.map(o=>{
+    const s=getStage(o);
+    const rts=o.trackRisk?trackStatus(o,'risk'):null;
+    const bts=o.trackBenefits?trackStatus(o,'benefits'):null;
+    const team=(o.team||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('');
+    const last=(o.auditLog&&o.auditLog.length)?o.auditLog[o.auditLog.length-1]:null;
+    const updLine=last
+      ?`<div class="card-updated">Updated by <strong>${esc(last.who)}</strong> &nbsp;&middot;&nbsp; ${new Date(last.ts).toLocaleDateString()} ${new Date(last.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`
+      :`<div class="card-updated">No edits recorded yet</div>`;
+    return`<div class="opp-card" onclick="openEdit('${o.id}')">
+      <div class="card-top">
+        <div>
+          <div class="card-name">${esc(o.name)||'Unnamed group'}</div>
+          <div class="card-meta">${esc(o.partner)||'—'} &nbsp;&middot;&nbsp; ${o.ee||'?'} EEs</div>
+          ${updLine}
+        </div>
+        <span class="badge ${STAGE_CLS[s]||'b-stage'}">${STAGE_MAP[s]||s}</span>
+      </div>
+      <div class="card-tracks">
+        ${o.trackRisk?`<div class="track-col"><span class="track-lbl">Risk</span>${rts?`<span class="badge ${tsClass(rts)}">${tsLabel(rts)}</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`:''}
+        ${o.trackBenefits?`<div class="track-col"><span class="track-lbl">Benefits</span>${bts?`<span class="badge ${tsClass(bts)}">${tsLabel(bts)}</span>`:'<span style="font-size:10px;color:var(--text3)">—</span>'}</div>`:''}
+      </div>
+      ${team?`<div class="card-team">${team}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function blankDraft(){
+  return{id:uid(),name:'',partner:'',ee:'',trackRisk:false,trackBenefits:false,team:[],
+    createdAt:Date.now(),updatedAt:Date.now(),currentStage:'intake',auditLog:[],
+    intake:{riskDocs:'',benefitsDocs:'',notes:''},
+    sub:{riskSubmitted:'',riskSubmittedBy:'',benefitsSubmitted:'',benefitsSubmittedBy:'',currentWith:'',notes:''},
+    uw:{riskOutcome:'',riskDecisionDate:'',riskNotes:'',benefitsOutcome:'',benefitsDecisionDate:'',benefitsNotes:'',currentWith:'',notes:''},
+    decision:{forward:'',forwardDate:'',decidedBy:'',currentWith:'',riskNotes:'',benefitsNotes:'',notes:''}};
+}
+
+function openNew(){editId=null;currentStage=0;activeTab='form';draft=blankDraft();buildModal();document.getElementById('modal').style.display='flex';}
+function openEdit(id){
+  const o=opps.find(x=>x.id===id);if(!o)return;
+  editId=id;activeTab='form';draft=JSON.parse(JSON.stringify(o));
+  if(!draft.auditLog)draft.auditLog=[];
+  ['intake','sub','uw','decision'].forEach(k=>{if(!draft[k])draft[k]={};});
+  const s=getStage(o);
+  currentStage=FINAL_STATUS.includes(s)?3:Math.max(0,STAGES.indexOf(s));
+  buildModal();document.getElementById('modal').style.display='flex';
+}
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+function stageOk(i){
+  if(i===0)return !!(draft.name&&draft.partner);
+  if(i===1)return !!(draft.sub.riskSubmitted||draft.sub.benefitsSubmitted);
+  if(i===2)return !!(draft.uw.riskOutcome||draft.uw.benefitsOutcome);
+  if(i===3)return !!(draft.decision.forward);
+  return false;
+}
+
+function buildModal(){
+  const logCount=draft.auditLog&&draft.auditLog.length?` (${draft.auditLog.length})`:'';
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title" id="mtitle">${esc(draft.name)||'New opportunity'}</div>
+    <div class="who-banner">
+      <span>Editing as</span>
+      <select id="who-select" onchange="setCurrentUser(this.value)">
+        <option value="">— select your name —</option>
+        ${TEAM.filter(t=>t!=='Other').map(t=>`<option value="${t}"${currentUser===t?' selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="tab-bar">
+      <button class="tabbt${activeTab==='form'?' active':''}" onclick="switchTab('form')">Record</button>
+      <button class="tabbt${activeTab==='log'?' active':''}" onclick="switchTab('log')">Activity log${logCount}</button>
+      <button class="tabbt${activeTab==='sf'?' active':''}" onclick="switchTab('sf')">SF Update</button>
+    </div>
+    <div id="tab-body"></div>
+    <div class="modal-actions"><div id="mleft"></div><div class="modal-actions-right" id="mright"></div></div>`;
+  renderTabBody();refreshActions();
+}
+
+function switchTab(tab){
+  activeTab=tab;
+  const tabs=['form','log','sf'];
+  document.querySelectorAll('.tabbt').forEach((b,i)=>{b.classList.toggle('active',tabs[i]===tab);});
+  renderTabBody();refreshActions();
+}
+
+function renderTabBody(){
+  const body=document.getElementById('tab-body');
+  if(activeTab==='log'){body.innerHTML=auditLogHTML();return;}
+  if(activeTab==='sf'){body.innerHTML=sfUpdateHTML();bindSFTab();return;}
+  body.innerHTML=`<div class="stage-nav" id="snav"></div><div id="sbody"></div>`;
+  refreshNav();renderStage();
+}
+
+function refreshNav(){
+  const el=document.getElementById('snav');if(!el)return;
+  el.innerHTML=STAGES.map((s,i)=>{
+    const c='sn-btn'+(i===currentStage?' active':stageOk(i)?' done':'');
+    return`<button class="${c}" onclick="goStage(${i})">${SLABELS[s]}${stageOk(i)&&i!==currentStage?' ✓':''}</button>`;
+  }).join('');
+}
+function refreshActions(confirming){
+  const canAdv=activeTab==='form'&&currentStage<3&&stageOk(currentStage);
+  if(confirming){
+    document.getElementById('mleft').innerHTML=editId
+      ?`<span style="font-size:12px;color:var(--red-text);margin-right:6px">Delete this record?</span>
+        <button class="btn danger" onclick="delOppConfirmed()">Yes, delete</button>
+        <button class="btn" style="margin-left:6px" onclick="refreshActions(false)">Cancel</button>`
+      :'';
+  } else {
+    document.getElementById('mleft').innerHTML=editId?`<button class="btn danger" onclick="refreshActions(true)">Delete</button>`:'';
+  }
+  document.getElementById('mright').innerHTML=
+    `<button class="btn" onclick="closeModal()">Close</button>`+
+    (canAdv?`<button class="btn advance" onclick="advStage()">Save &amp; advance →</button>`:'')+
+    (activeTab==='form'?`<button class="btn primary" onclick="saveOpp(false,false)">Save</button>`:'');
+}
+function updateTitle(){const el=document.getElementById('mtitle');if(el)el.textContent=draft.name||'New opportunity';}
+function goStage(i){currentStage=i;renderStage();refreshNav();refreshActions();}
+
+function renderStage(){
+  const b=document.getElementById('sbody');if(!b)return;
+  if(currentStage===0)b.innerHTML=intakeHTML();
+  else if(currentStage===1)b.innerHTML=subHTML();
+  else if(currentStage===2)b.innerHTML=uwHTML();
+  else b.innerHTML=decisionHTML();
+  bindStage();
+}
+
+function bi(id,fn){const el=document.getElementById(id);if(el)el.addEventListener('input',e=>fn(e.target.value));}
+function bs(id,fn){const el=document.getElementById(id);if(el)el.addEventListener('change',e=>fn(e.target.value));}
+function bc(id,fn){const el=document.getElementById(id);if(el)el.addEventListener('change',e=>fn(e.target.checked));}
+
+function bindStage(){
+  if(currentStage===0){
+    bi('f-name',v=>{draft.name=v;updateTitle();refreshNav();refreshActions();});
+    bi('f-partner',v=>{draft.partner=v;refreshActions();});
+    bi('f-ee',v=>{draft.ee=v;});
+    bc('f-risk',v=>{draft.trackRisk=v;});
+    bc('f-benefits',v=>{draft.trackBenefits=v;});
+    bi('f-risk-docs',v=>{draft.intake.riskDocs=v;});
+    bi('f-ben-docs',v=>{draft.intake.benefitsDocs=v;});
+    bi('f-intake-notes',v=>{draft.intake.notes=v;});
+    TEAM.forEach(t=>{bc('tm-'+tkey(t),v=>{if(v&&!draft.team.includes(t))draft.team.push(t);else draft.team=draft.team.filter(x=>x!==t);});});
+  }
+  if(currentStage===1){
+    bi('f-risk-sub',v=>{draft.sub.riskSubmitted=v;refreshNav();refreshActions();});
+    bs('f-risk-sub-by',v=>{draft.sub.riskSubmittedBy=v;});
+    bi('f-ben-sub',v=>{draft.sub.benefitsSubmitted=v;refreshNav();refreshActions();});
+    bs('f-ben-sub-by',v=>{draft.sub.benefitsSubmittedBy=v;});
+    bi('f-sub-notes',v=>{draft.sub.notes=v;});
+  }
+  if(currentStage===2){
+    bi('f-risk-uw-date',v=>{draft.uw.riskDecisionDate=v;});
+    bi('f-risk-uw-notes',v=>{draft.uw.riskNotes=v;});
+    bi('f-ben-uw-date',v=>{draft.uw.benefitsDecisionDate=v;});
+    bi('f-ben-uw-notes',v=>{draft.uw.benefitsNotes=v;});
+    bi('f-uw-notes',v=>{draft.uw.notes=v;});
+  }
+  if(currentStage===3){
+    bi('f-fwd-date',v=>{draft.decision.forwardDate=v;});
+    bs('f-decided-by',v=>{draft.decision.decidedBy=v;});
+    bi('f-dec-risk-notes',v=>{draft.decision.riskNotes=v;});
+    bi('f-dec-ben-notes',v=>{draft.decision.benefitsNotes=v;});
+    bi('f-dec-notes',v=>{draft.decision.notes=v;});
+  }
+}
+
+function withPillsHTML(obj,sk){return WITH_OPTS.map(w=>`<button class="with-pill${obj.currentWith===w?' sel':''}" onclick="setWith('${sk}','${w}')">${w}</button>`).join('');}
+function setWith(sk,val){draft[sk].currentWith=val;document.querySelectorAll('.with-pill').forEach(b=>{b.className='with-pill'+(b.textContent.trim()===val?' sel':'');});}
+
+function uwPills(track){
+  const cur=draft.uw[track+'Outcome'];
+  return[['approved','Approved','sel-approved'],['denied','Denied','sel-denied'],['om','Looking OM','sel-om']]
+    .map(([v,l,c])=>`<button class="pill uw-pill-${track}${cur===v?' '+c:''}" data-val="${v}" onclick="setUwOutcome('${track}','${v}')">${l}</button>`).join('');
+}
+function setUwOutcome(track,val){
+  draft.uw[track+'Outcome']=val;refreshNav();refreshActions();
+  const cont=document.querySelector('.uw-pills-'+track);if(cont)cont.innerHTML=uwPills(track);
+}
+
+function fwdPillsHTML(){
+  const cur=draft.decision.forward;
+  return[['client','Became client','sel-client'],['notforward','Not moving forward','sel-notforward'],['deciding','Still deciding','sel-deciding']]
+    .map(([v,l,c])=>`<button class="pill fwd-pill${cur===v?' '+c:''}" onclick="setFwd('${v}')">${l}</button>`).join('');
+}
+function setFwd(val){
+  draft.decision.forward=val;refreshNav();refreshActions();
+  const lmap={client:'Became client',notforward:'Not moving forward',deciding:'Still deciding'};
+  const cmap={client:'sel-client',notforward:'sel-notforward',deciding:'sel-deciding'};
+  document.querySelectorAll('.fwd-pill').forEach(b=>{b.className='pill fwd-pill';if(b.textContent.trim()===lmap[val])b.classList.add(cmap[val]);});
+}
+
+function teamOpts(sel){return'<option value="">—</option>'+TEAM.map(t=>`<option value="${t}"${t===sel?' selected':''}>${t}</option>`).join('');}
+
+function intakeHTML(){
+  const d=draft.intake||{};
+  const tc=TEAM.map(t=>`<label class="cb-row"><input type="checkbox" id="tm-${tkey(t)}"${(draft.team||[]).includes(t)?' checked':''}> ${t}</label>`).join('');
+  return`<div class="sec">Group information</div>
+    <div class="row2">
+      <div class="field"><label>Group name *</label><input id="f-name" value="${esc(draft.name)}" placeholder="Company name"></div>
+      <div class="field"><label>Channel partner *</label><input id="f-partner" value="${esc(draft.partner)}" placeholder="Agency, broker, CPA..."></div>
+    </div>
+    <div class="field" style="max-width:180px"><label>Employee count</label><input id="f-ee" type="number" value="${esc(draft.ee)}" placeholder="#"></div>
+    <div class="field"><label>Submission type</label>
+      <div style="display:flex;gap:20px;margin-top:6px">
+        <label class="cb-row"><input type="checkbox" id="f-risk"${draft.trackRisk?' checked':''}> Risk (WC / PEO)</label>
+        <label class="cb-row"><input type="checkbox" id="f-benefits"${draft.trackBenefits?' checked':''}> Benefits (Medical)</label>
+      </div>
+    </div>
+    <div class="sec">Docs received from partner</div>
+    <div class="row2">
+      <div class="field"><label>Risk docs received</label><input id="f-risk-docs" type="date" value="${esc(d.riskDocs)}"></div>
+      <div class="field"><label>Benefits docs received</label><input id="f-ben-docs" type="date" value="${esc(d.benefitsDocs)}"></div>
+    </div>
+    <div class="field"><label>Intake notes</label><textarea id="f-intake-notes">${esc(d.notes)}</textarea></div>
+    <div class="sec">Team members</div>
+    <div class="cb-grid">${tc}</div>`;
+}
+
+function subHTML(){
+  const d=draft.sub||{};
+  return`<div class="sec">Currently with</div>
+    <div class="pill-group" style="margin-bottom:4px">${withPillsHTML(d,'sub')}</div>
+    ${draft.trackRisk?`<div class="sec">Risk submission</div>
+    <div class="track-box"><div class="track-box-title">Risk</div>
+      <div class="row2">
+        <div class="field"><label>Date submitted to underwriting</label><input id="f-risk-sub" type="date" value="${esc(d.riskSubmitted)}"></div>
+        <div class="field"><label>Submitted by</label><select id="f-risk-sub-by">${teamOpts(d.riskSubmittedBy)}</select></div>
+      </div>
+    </div>`:''}
+    ${draft.trackBenefits?`<div class="sec">Benefits submission</div>
+    <div class="track-box"><div class="track-box-title">Benefits</div>
+      <div class="row2">
+        <div class="field"><label>Date submitted to underwriting</label><input id="f-ben-sub" type="date" value="${esc(d.benefitsSubmitted)}"></div>
+        <div class="field"><label>Submitted by</label><select id="f-ben-sub-by">${teamOpts(d.benefitsSubmittedBy)}</select></div>
+      </div>
+    </div>`:''}
+    ${!draft.trackRisk&&!draft.trackBenefits?`<p style="padding:1rem;color:var(--text3);font-size:13px">Return to Intake and select at least one submission type.</p>`:''}
+    <div class="field"><label>General notes</label><textarea id="f-sub-notes">${esc(d.notes)}</textarea></div>`;
+}
+
+function uwHTML(){
+  const d=draft.uw||{};
+  return`<div class="sec">Currently with</div>
+    <div class="pill-group" style="margin-bottom:4px">${withPillsHTML(d,'uw')}</div>
+    ${draft.trackRisk?`<div class="sec">Risk underwriting</div>
+    <div class="track-box"><div class="track-box-title">Risk</div>
+      <div class="field"><label>Outcome *</label><div class="pill-group uw-pills-risk">${uwPills('risk')}</div></div>
+      <div class="field"><label>Decision / update date</label><input id="f-risk-uw-date" type="date" value="${esc(d.riskDecisionDate)}"></div>
+      <div class="field"><label>Risk notes</label><textarea id="f-risk-uw-notes">${esc(d.riskNotes)}</textarea></div>
+    </div>`:''}
+    ${draft.trackBenefits?`<div class="sec">Benefits underwriting</div>
+    <div class="track-box"><div class="track-box-title">Benefits</div>
+      <div class="field"><label>Outcome *</label><div class="pill-group uw-pills-benefits">${uwPills('benefits')}</div></div>
+      <div class="field"><label>Decision / update date</label><input id="f-ben-uw-date" type="date" value="${esc(d.benefitsDecisionDate)}"></div>
+      <div class="field"><label>Benefits notes</label><textarea id="f-ben-uw-notes">${esc(d.benefitsNotes)}</textarea></div>
+    </div>`:''}
+    ${!draft.trackRisk&&!draft.trackBenefits?`<p style="padding:1rem;color:var(--text3);font-size:13px">No submission type selected.</p>`:''}
+    <div class="field"><label>General notes</label><textarea id="f-uw-notes">${esc(d.notes)}</textarea></div>`;
+}
+
+function decisionHTML(){
+  const d=draft.decision||{};
+  return`<div class="sec">Currently with</div>
+    <div class="pill-group" style="margin-bottom:4px">${withPillsHTML(d,'decision')}</div>
+    <div class="sec">Moving forward?</div>
+    <div class="field"><div class="pill-group">${fwdPillsHTML()}</div></div>
+    <div class="row2">
+      <div class="field"><label>Decision date</label><input id="f-fwd-date" type="date" value="${esc(d.forwardDate)}"></div>
+      <div class="field"><label>Decision communicated by</label><select id="f-decided-by">${teamOpts(d.decidedBy)}</select></div>
+    </div>
+    ${draft.trackRisk?`<div class="field"><label>Risk — decision notes</label><textarea id="f-dec-risk-notes">${esc(d.riskNotes)}</textarea></div>`:''}
+    ${draft.trackBenefits?`<div class="field"><label>Benefits — decision notes</label><textarea id="f-dec-ben-notes">${esc(d.benefitsNotes)}</textarea></div>`:''}
+    <div class="field"><label>General notes</label><textarea id="f-dec-notes">${esc(d.notes)}</textarea></div>`;
+}
+
+function auditLogHTML(){
+  const log=[...(draft.auditLog||[])].reverse();
+  if(!log.length)return'<div class="audit-empty">No activity recorded yet. Changes will appear here after the first save.</div>';
+  return'<div class="audit-log">'+log.map(e=>{
+    const d=new Date(e.ts);
+    const ds=d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return`<div class="audit-entry">
+      <div class="audit-dot${e.type==='advance'?' adv':''}"></div>
+      <div>
+        <div class="audit-who">${esc(e.who||'Unknown')}</div>
+        <div class="audit-what">${esc(e.note)}</div>
+        <div class="audit-when">${ds}</div>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function appendAudit(type,note){
+  if(!draft.auditLog)draft.auditLog=[];
+  draft.auditLog.push({ts:Date.now(),who:currentUser||'Unknown',type,note});
+}
+
+function showNoUserWarning(){
+  const el=document.getElementById('who-select');
+  if(el){el.style.borderColor='var(--red-border)';el.style.background='var(--red-bg)';setTimeout(()=>{el.style.borderColor='';el.style.background='';},2000);}
+  const banner=document.getElementById('who-select')&&document.getElementById('who-select').closest('.who-banner');
+  // show inline message
+  let warn=document.getElementById('no-user-warn');
+  if(!warn){
+    warn=document.createElement('span');
+    warn.id='no-user-warn';
+    warn.style.cssText='font-size:11px;color:var(--red-text);margin-left:8px';
+    warn.textContent='Please select your name first';
+    const sel=document.getElementById('who-select');
+    if(sel)sel.parentNode.appendChild(warn);
+  }
+  setTimeout(()=>{const w=document.getElementById('no-user-warn');if(w)w.remove();},3000);
+}
+
+async function saveOpp(stayOpen,isAdvance){
+  if(!currentUser){showNoUserWarning();return;}
+  draft.updatedAt=Date.now();
+  if(!draft.currentStage)draft.currentStage='intake';
+  const stageName=SLABELS[STAGES[currentStage]]||'';
+  appendAudit(isAdvance?'advance':'update',isAdvance?`Advanced to ${SLABELS[draft.currentStage]} stage`:`Updated record — ${stageName} tab`);
+  if(editId){const i=opps.findIndex(o=>o.id===editId);if(i>-1)opps[i]=draft;else opps.push(draft);}
+  else{opps.push(draft);editId=draft.id;}
+  await save();
+  if(!stayOpen){
+    document.getElementById('modal').style.display='none';
+  } else buildModal();
+}
+
+async function advStage(){
+  if(!currentUser){showNoUserWarning();return;}
+  draft.currentStage=STAGES[currentStage+1];
+  draft.updatedAt=Date.now();
+  appendAudit('advance',`Advanced to ${SLABELS[draft.currentStage]} stage`);
+  if(editId){const i=opps.findIndex(o=>o.id===editId);if(i>-1)opps[i]=draft;else opps.push(draft);}
+  else{opps.push(draft);editId=draft.id;}
+  await save();
+  currentStage++;
+  buildModal();
+}
+
+async function delOppConfirmed(){
+  opps=opps.filter(o=>o.id!==editId);
+  await save();
+  document.getElementById('modal').style.display='none';
+}
+
+function exportCSV(){
+  const rows=[['Name','Partner','EEs','Tracks','Stage','Last Updated By','Last Updated','Team','Risk Docs','Benefits Docs','Risk Submitted','Benefits Submitted','Risk UW Outcome','Benefits UW Outcome','Decision','Notes']];
+  opps.forEach(o=>{
+    const last=(o.auditLog&&o.auditLog.length)?o.auditLog[o.auditLog.length-1]:null;
+    rows.push([o.name||'',o.partner||'',o.ee||'',
+      o.trackRisk&&o.trackBenefits?'Both':o.trackRisk?'Risk':'Benefits',
+      getStage(o),last?last.who:'',last?new Date(last.ts).toLocaleString():'',
+      (o.team||[]).join('; '),(o.intake||{}).riskDocs||'',(o.intake||{}).benefitsDocs||'',
+      (o.sub||{}).riskSubmitted||'',(o.sub||{}).benefitsSubmitted||'',
+      (o.uw||{}).riskOutcome||'',(o.uw||{}).benefitsOutcome||'',
+      (o.decision||{}).forward||'',(o.decision||{}).notes||'']);
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+(c+'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='peo_opps.csv';a.click();
+}
+
+let pendingImport=[];
+
+function importCSV(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  event.target.value='';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const text=e.target.result;
+      const lines=text.split('\n').filter(l=>l.trim());
+      if(lines.length<2){showImportResult('No records found in file.',false);return;}
+      const headers=parseCSVRow(lines[0]);
+      const idx={
+        name:headers.indexOf('Name'),partner:headers.indexOf('Partner'),ee:headers.indexOf('EEs'),
+        tracks:headers.indexOf('Tracks'),team:headers.indexOf('Team'),
+        riskDocs:headers.indexOf('Risk Docs'),benDocs:headers.indexOf('Benefits Docs'),
+        riskSub:headers.indexOf('Risk Submitted'),benSub:headers.indexOf('Benefits Submitted'),
+        riskUW:headers.indexOf('Risk UW Outcome'),benUW:headers.indexOf('Benefits UW Outcome'),
+        decision:headers.indexOf('Decision'),notes:headers.indexOf('Notes')
+      };
+      pendingImport=[];
+      for(let i=1;i<lines.length;i++){
+        const cols=parseCSVRow(lines[i]);
+        if(!cols.length||!cols[idx.name])continue;
+        const tracks=idx.tracks>=0?cols[idx.tracks]:'';
+        const trackRisk=tracks==='Risk'||tracks==='Both';
+        const trackBenefits=tracks==='Benefits'||tracks==='Both';
+        const teamArr=idx.team>=0&&cols[idx.team]?cols[idx.team].split(';').map(t=>t.trim()).filter(Boolean):[];
+        const riskUWVal=idx.riskUW>=0?cols[idx.riskUW]:'';
+        const benUWVal=idx.benUW>=0?cols[idx.benUW]:'';
+        const decVal=idx.decision>=0?cols[idx.decision]:'';
+        // determine currentStage from decision/uw/sub/docs
+        let currentStage='intake';
+        if(decVal&&['client','notforward','deciding'].includes(decVal)) currentStage=decVal;
+        else if(riskUWVal||benUWVal) currentStage='underwriting';
+        else if((idx.riskSub>=0&&cols[idx.riskSub])||(idx.benSub>=0&&cols[idx.benSub])) currentStage='submission';
+        const o={
+          id:uid(),name:cols[idx.name]||'',partner:idx.partner>=0?cols[idx.partner]:'',
+          ee:idx.ee>=0?cols[idx.ee]:'',trackRisk,trackBenefits,team:teamArr,
+          createdAt:Date.now(),updatedAt:Date.now(),currentStage,auditLog:[],
+          intake:{riskDocs:idx.riskDocs>=0?cols[idx.riskDocs]:'',benefitsDocs:idx.benDocs>=0?cols[idx.benDocs]:'',notes:''},
+          sub:{riskSubmitted:idx.riskSub>=0?cols[idx.riskSub]:'',riskSubmittedBy:'',benefitsSubmitted:idx.benSub>=0?cols[idx.benSub]:'',benefitsSubmittedBy:'',currentWith:'',notes:''},
+          uw:{riskOutcome:riskUWVal,riskDecisionDate:'',riskNotes:'',benefitsOutcome:benUWVal,benefitsDecisionDate:'',benefitsNotes:'',currentWith:'',notes:''},
+          decision:{forward:['client','notforward','deciding'].includes(decVal)?decVal:'',forwardDate:'',decidedBy:'',currentWith:'',riskNotes:'',benefitsNotes:'',notes:idx.notes>=0?cols[idx.notes]:''}
+        };
+        pendingImport.push(o);
+      }
+      if(!pendingImport.length){showImportResult('No valid records found in file.',false);return;}
+      showImportConfirm(pendingImport.length);
+    }catch(err){showImportResult('Could not parse file. Make sure it is an exported CSV from this tracker.',false);}
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVRow(row){
+  const cols=[];let cur='',inQ=false;
+  for(let i=0;i<row.length;i++){
+    const c=row[i];
+    if(c==='"'){if(inQ&&row[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+    else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
+    else cur+=c;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function showImportConfirm(count){
+  const overlay=document.getElementById('import-overlay');
+  document.getElementById('import-msg').innerHTML=
+    `<strong>${count} record${count!==1?'s':''} found.</strong><br>
+    <span style="font-size:12px;color:var(--text2)">How do you want to handle existing data?</span>`;
+  document.getElementById('import-btn-replace').style.display='inline-block';
+  document.getElementById('import-btn-merge').style.display='inline-block';
+  document.getElementById('import-btn-ok').style.display='none';
+  overlay.style.display='flex';
+}
+
+function showImportResult(msg,success){
+  const overlay=document.getElementById('import-overlay');
+  document.getElementById('import-msg').innerHTML=`<span style="color:${success?'var(--green-text)':'var(--red-text)'}">${msg}</span>`;
+  document.getElementById('import-btn-replace').style.display='none';
+  document.getElementById('import-btn-merge').style.display='none';
+  document.getElementById('import-btn-ok').style.display='inline-block';
+  overlay.style.display='flex';
+}
+
+function doImport(mode){
+  if(mode==='replace'){
+    opps=pendingImport;
+  } else {
+    // merge: skip records whose name+partner already exist
+    const existing=new Set(opps.map(o=>(o.name+'|'+o.partner).toLowerCase()));
+    const added=pendingImport.filter(o=>!existing.has((o.name+'|'+o.partner).toLowerCase()));
+    opps=[...opps,...added];
+    const skipped=pendingImport.length-added.length;
+    pendingImport=[];
+    save();
+    showImportResult(`Imported ${added.length} new record${added.length!==1?'s':''}${skipped?', skipped '+skipped+' duplicate'+(skipped!==1?'s':''):'.'} `,true);
+    return;
+  }
+  pendingImport=[];
+  save();
+  showImportResult(`Successfully imported ${opps.length} record${opps.length!==1?'s':''}.`,true);
+}
+
+function closeImportOverlay(){
+  document.getElementById('import-overlay').style.display='none';
+}
+
+function getInitials(name){
+  if(!name)return'??';
+  return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,3);
+}
+
+function generateSFNote(){
+  const today=new Date();
+  const dateStr=(today.getMonth()+1)+'/'+today.getDate()+'/'+today.getFullYear();
+  const initials=getInitials(currentUser);
+  const uw=draft.uw||{};
+  const sub=draft.sub||{};
+  const dec=draft.decision||{};
+  const stage=getStage(draft);
+  const parts=[];
+
+  // Build per-track status phrase
+  if(draft.trackRisk){
+    const ro=uw.riskOutcome;
+    if(ro==='approved') parts.push('Risk Approved'+(uw.riskNotes?', '+uw.riskNotes:''));
+    else if(ro==='denied') parts.push('Risk Denied'+(uw.riskNotes?', '+uw.riskNotes:''));
+    else if(ro==='om') parts.push('Risk — looking open market'+(uw.riskNotes?', '+uw.riskNotes:''));
+    else if(sub.riskSubmitted) parts.push('Risk submitted to U/W'+(sub.riskSubmittedBy?', submitted by '+sub.riskSubmittedBy:''));
+    else if(draft.intake&&draft.intake.riskDocs) parts.push('Risk docs received, pending submission');
+    else parts.push('Risk — intake in progress');
+  }
+  if(draft.trackBenefits){
+    const bo=uw.benefitsOutcome;
+    if(bo==='approved') parts.push('Benefits Approved'+(uw.benefitsNotes?', '+uw.benefitsNotes:''));
+    else if(bo==='denied') parts.push('Benefits Denied'+(uw.benefitsNotes?', '+uw.benefitsNotes:''));
+    else if(bo==='om') parts.push('Benefits — looking open market'+(uw.benefitsNotes?', '+uw.benefitsNotes:''));
+    else if(sub.benefitsSubmitted) parts.push('Benefits submitted to U/W'+(sub.benefitsSubmittedBy?', submitted by '+sub.benefitsSubmittedBy:''));
+    else if(draft.intake&&draft.intake.benefitsDocs) parts.push('Benefits docs received, pending submission');
+    else parts.push('Benefits — intake in progress');
+  }
+
+  // Decision layer
+  if(stage==='client') parts.push('Client moving forward');
+  else if(stage==='notforward') parts.push('Group not moving forward'+(dec.notes?', '+dec.notes:''));
+  else if(stage==='deciding') parts.push('Awaiting decision from client');
+
+  // Currently with
+  const withMap={sub:sub.currentWith,uw:uw.currentWith,decision:dec.currentWith};
+  const currentWith=withMap.decision||withMap.uw||withMap.sub;
+  if(currentWith) parts.push('Currently with: '+currentWith);
+
+  const body=parts.join('. ')+(parts.length?'.':'');
+  return`${dateStr} ${initials} - ${body}`;
+}
+
+function sfUpdateHTML(){
+  const suggested=generateSFNote();
+  return`
+    <div class="sec" style="margin-top:0">Salesforce update note</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">Pre-filled based on current record state. Edit freely before copying.</p>
+    <div class="field">
+      <label>Update note</label>
+      <textarea id="sf-note" style="min-height:100px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6">${esc(suggested)}</textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+      <button class="btn primary" id="copy-btn" onclick="copySFNote()">Copy to clipboard</button>
+      <button class="btn" onclick="document.getElementById('sf-note').value=generateSFNote()">Regenerate</button>
+      <span id="copy-confirm" style="font-size:12px;color:var(--green-text);opacity:0;transition:opacity .3s">Copied!</span>
+    </div>
+    <div style="margin-top:20px;padding:12px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Format reference</div>
+      <div style="font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;line-height:1.7">4/3/2026 AR - Risk Approved, Quote sent to CP. Benefits Denied, waiting on confirmation from CP if we should look OM.</div>
+    </div>`;
+}
+
+function bindSFTab(){
+  // textarea is free-type, no binding needed beyond the copy button
+}
+
+function copySFNote(){
+  const el=document.getElementById('sf-note');
+  if(!el)return;
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const conf=document.getElementById('copy-confirm');
+    if(conf){conf.style.opacity='1';setTimeout(()=>{conf.style.opacity='0';},2000);}
+  }).catch(()=>{
+    el.select();document.execCommand('copy');
+    const conf=document.getElementById('copy-confirm');
+    if(conf){conf.style.opacity='1';setTimeout(()=>{conf.style.opacity='0';},2000);}
+  });
+}
+
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
+load();
+setInterval(load,30000);
+
+// Expose functions to window for inline onclick handlers
+Object.assign(window,{
+  renderList,openNew,openEdit,closeModal,exportCSV,importCSV,closeImportOverlay,
+  doImport,switchTab,goStage,advStage,saveOpp,delOppConfirmed,refreshActions,
+  setWith,setUwOutcome,setFwd,copySFNote,generateSFNote,setCurrentUser
+});
+</script>
+</body>
+</html>
