@@ -217,7 +217,7 @@ const DOC_REF = doc(db, 'peo', 'opps_v3');
 const TEAM=['Austin Roberts','Austin Roberts (AI)','Will Franco','Chad Starkey','Ryan Coukoulis','Luke Motsinger','Tanner Pollock','Kaity Vela','Ahmed Elghazali','Other'];
 const STAGES=['intake','submission','underwriting','decision'];
 const SLABELS={intake:'Intake',submission:'Submission',underwriting:'Underwriting',decision:'Decision'};
-const WITH_OPTS=['Sales team','Channel partner','Underwriting'];
+const WITH_OPTS=['Sales team','Channel partner','Underwriting','Prospect'];
 const FINAL_STATUS=['client','notforward','deciding'];
 const STAGE_MAP={intake:'Intake',submission:'Submission',underwriting:'Underwriting',decision:'Decision',client:'Client',notforward:'Not moving forward',deciding:'Still deciding'};
 const STAGE_CLS={intake:'b-stage',submission:'b-stage',underwriting:'b-stage',decision:'b-stage',client:'b-client',notforward:'b-notforward',deciding:'b-deciding'};
@@ -293,6 +293,7 @@ function tsClass(ts){return{docs:'b-docs',submitted:'b-submitted',approved:'b-ap
 
 // Returns attention reason string or null
 function attentionReason(o){
+  if(o.flagAttention) return 'Manually flagged for attention';
   const stage=getStage(o);
   if(FINAL_STATUS.includes(stage)) return null;
   const threshold=STALE_DAYS[stage];
@@ -457,6 +458,7 @@ function cardHTML(o){
 
 function blankDraft(){
   return{id:uid(),name:'',partner:'',ee:'',trackRisk:false,trackBenefits:false,team:[],
+    flagAttention:false,
     createdAt:Date.now(),updatedAt:Date.now(),currentStage:'intake',auditLog:[],
     intake:{riskDocs:'',benefitsDocs:'',notes:''},
     sub:{riskSubmitted:'',riskSubmittedBy:'',benefitsSubmitted:'',benefitsSubmittedBy:'',currentWith:'',notes:''},
@@ -570,6 +572,7 @@ function bindStage(){
     bi('f-ben-docs',v=>{draft.intake.benefitsDocs=v;});
     bi('f-intake-notes',v=>{draft.intake.notes=v;});
     bi('f-cp-contact',v=>{draft.intake.cpContact=v;});
+    bc('f-flag-attention',v=>{draft.flagAttention=v;});
     TEAM.forEach(t=>{bc('tm-'+tkey(t),v=>{if(v&&!draft.team.includes(t))draft.team.push(t);else draft.team=draft.team.filter(x=>x!==t);});});
   }
   if(currentStage===1){
@@ -652,7 +655,14 @@ function intakeHTML(){
     </div>
     <div class="field"><label>Intake notes</label><textarea id="f-intake-notes">${esc(d.notes)}</textarea></div>
     <div class="sec">Team members</div>
-    <div class="cb-grid">${tc}</div>`;
+    <div class="cb-grid">${tc}</div>
+    <div style="margin-top:14px;padding:10px 12px;border-radius:var(--radius);border:1px solid ${draft.flagAttention?'var(--red-border)':'var(--border)'};background:${draft.flagAttention?'var(--red-bg)':'var(--surface2)'}">
+      <label class="cb-row" style="gap:9px">
+        <input type="checkbox" id="f-flag-attention"${draft.flagAttention?' checked':''} style="width:14px;height:14px;accent-color:var(--red-text)">
+        <span style="font-size:13px;color:${draft.flagAttention?'var(--red-text)':'var(--text)'}">Flag for immediate attention</span>
+      </label>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px;margin-left:23px">Overrides staleness timer — keeps record in Needs Attention until unchecked</div>
+    </div>`;
 }
 
 function subHTML(){
