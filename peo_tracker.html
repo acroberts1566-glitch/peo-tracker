@@ -488,6 +488,7 @@ function stageOk(i){
 
 function buildModal(){
   const logCount=draft.auditLog&&draft.auditLog.length?` (${draft.auditLog.length})`:'';
+  const flagged=draft.flagAttention;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title" id="mtitle">${esc(draft.name)||'New opportunity'}</div>
     <div class="who-banner">
@@ -497,6 +498,13 @@ function buildModal(){
         ${TEAM.filter(t=>t!=='Other'&&t!=='Austin Roberts (AI)').map(t=>`<option value="${t}"${currentUser===t?' selected':''}>${t}</option>`).join('')}
       </select>
     </div>
+    <div style="padding:8px 12px;border-radius:var(--radius);border:1px solid ${flagged?'var(--red-border)':'var(--border)'};background:${flagged?'var(--red-bg)':'var(--surface2)'};margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+      <label class="cb-row" style="gap:9px;cursor:pointer">
+        <input type="checkbox" id="f-flag-attention"${flagged?' checked':''} style="width:14px;height:14px;accent-color:var(--red-text)" onchange="toggleFlagAttention(this.checked)">
+        <span style="font-size:12px;font-weight:500;color:${flagged?'var(--red-text)':'var(--text2)'}">Flag for immediate attention</span>
+      </label>
+      ${flagged?'<span style="font-size:11px;color:var(--red-text)">⚠ This record is flagged</span>':'<span style="font-size:11px;color:var(--text3)">Overrides staleness timer</span>'}
+    </div>
     <div class="tab-bar">
       <button class="tabbt${activeTab==='form'?' active':''}" onclick="switchTab('form')">Record</button>
       <button class="tabbt${activeTab==='log'?' active':''}" onclick="switchTab('log')">Activity log${logCount}</button>
@@ -505,6 +513,13 @@ function buildModal(){
     <div id="tab-body"></div>
     <div class="modal-actions"><div id="mleft"></div><div class="modal-actions-right" id="mright"></div></div>`;
   renderTabBody();refreshActions();
+}
+
+function toggleFlagAttention(val){
+  draft.flagAttention=val;
+  // Re-render just the flag banner without rebuilding the whole modal
+  const banner=document.getElementById('f-flag-attention')&&document.getElementById('f-flag-attention').closest('div[style]');
+  buildModal();
 }
 
 function switchTab(tab){
@@ -572,7 +587,6 @@ function bindStage(){
     bi('f-ben-docs',v=>{draft.intake.benefitsDocs=v;});
     bi('f-intake-notes',v=>{draft.intake.notes=v;});
     bi('f-cp-contact',v=>{draft.intake.cpContact=v;});
-    bc('f-flag-attention',v=>{draft.flagAttention=v;});
     TEAM.forEach(t=>{bc('tm-'+tkey(t),v=>{if(v&&!draft.team.includes(t))draft.team.push(t);else draft.team=draft.team.filter(x=>x!==t);});});
   }
   if(currentStage===1){
@@ -655,14 +669,7 @@ function intakeHTML(){
     </div>
     <div class="field"><label>Intake notes</label><textarea id="f-intake-notes">${esc(d.notes)}</textarea></div>
     <div class="sec">Team members</div>
-    <div class="cb-grid">${tc}</div>
-    <div style="margin-top:14px;padding:10px 12px;border-radius:var(--radius);border:1px solid ${draft.flagAttention?'var(--red-border)':'var(--border)'};background:${draft.flagAttention?'var(--red-bg)':'var(--surface2)'}">
-      <label class="cb-row" style="gap:9px">
-        <input type="checkbox" id="f-flag-attention"${draft.flagAttention?' checked':''} style="width:14px;height:14px;accent-color:var(--red-text)">
-        <span style="font-size:13px;color:${draft.flagAttention?'var(--red-text)':'var(--text)'}">Flag for immediate attention</span>
-      </label>
-      <div style="font-size:11px;color:var(--text3);margin-top:3px;margin-left:23px">Overrides staleness timer — keeps record in Needs Attention until unchecked</div>
-    </div>`;
+    <div class="cb-grid">${tc}</div>`;
 }
 
 function subHTML(){
@@ -1012,7 +1019,8 @@ setInterval(load,30000);
 Object.assign(window,{
   renderList,openNew,openEdit,closeModal,exportCSV,importCSV,closeImportOverlay,
   doImport,switchTab,goStage,advStage,saveOpp,delOppConfirmed,refreshActions,
-  setWith,setUwOutcome,setFwd,copySFNote,generateSFNote,setCurrentUser,setNavTab,setSort
+  setWith,setUwOutcome,setFwd,copySFNote,generateSFNote,setCurrentUser,setNavTab,setSort,
+  toggleFlagAttention
 });
 </script>
 </body>
